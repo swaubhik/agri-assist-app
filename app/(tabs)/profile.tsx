@@ -45,35 +45,35 @@ export default function ProfileScreen() {
         title={t('profile')}
         showBackButton={false}
       />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        
+
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <User size={40} color="#fff" />
             </View>
           </View>
-          
+
           <Text style={styles.userName}>{user.name}</Text>
           <Text style={styles.userPhone}>{user.phone}</Text>
-          
+
           {!isEditing && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.editButton}
               onPress={() => setIsEditing(true)}>
               <Text style={styles.editButtonText}>{t('editProfile')}</Text>
             </TouchableOpacity>
           )}
         </View>
-        
+
         {isEditing ? (
           <Card style={styles.editCard}>
             <Text style={styles.editTitle}>{t('editProfile')}</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('name')}</Text>
               <TextInput
@@ -83,7 +83,7 @@ export default function ProfileScreen() {
                 placeholder={t('enterName')}
               />
             </View>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('phone')}</Text>
               <TextInput
@@ -94,7 +94,7 @@ export default function ProfileScreen() {
                 keyboardType="phone-pad"
               />
             </View>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('landSize')}</Text>
               <TextInput
@@ -105,7 +105,7 @@ export default function ProfileScreen() {
                 keyboardType="numeric"
               />
             </View>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('location')}</Text>
               <TextInput
@@ -115,15 +115,15 @@ export default function ProfileScreen() {
                 placeholder={t('enterLocation')}
               />
             </View>
-            
+
             <View style={styles.buttonGroup}>
-              <Button 
+              <Button
                 label={t('save')}
                 onPress={handleSaveProfile}
                 style={styles.saveButton}
               />
-              
-              <Button 
+
+              <Button
                 label={t('cancel')}
                 onPress={() => setIsEditing(false)}
                 style={styles.cancelButton}
@@ -138,21 +138,21 @@ export default function ProfileScreen() {
                 <Text style={styles.infoLabel}>{t('landSize')}</Text>
                 <Text style={styles.infoValue}>{user.landSize || t('notSpecified')}</Text>
               </View>
-              
+
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>{t('location')}</Text>
                 <Text style={styles.infoValue}>{user.location || t('notSpecified')}</Text>
               </View>
-              
+
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>{t('totalReadings')}</Text>
                 <Text style={styles.infoValue}>12</Text>
               </View>
             </Card>
-            
+
             <Card style={styles.settingsCard}>
               <Text style={styles.settingsTitle}>{t('settings')}</Text>
-              
+
               <View style={styles.settingItem}>
                 <View style={styles.settingLeft}>
                   <Bell color={Colors.text.primary} size={20} style={styles.settingIcon} />
@@ -165,7 +165,7 @@ export default function ProfileScreen() {
                   thumbColor="#fff"
                 />
               </View>
-              
+
               <TouchableOpacity style={styles.settingItem}>
                 <View style={styles.settingLeft}>
                   <Globe color={Colors.text.primary} size={20} style={styles.settingIcon} />
@@ -178,7 +178,7 @@ export default function ProfileScreen() {
                   <ChevronRight color={Colors.text.secondary} size={18} />
                 </View>
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.settingItem}>
                 <View style={styles.settingLeft}>
                   <HelpCircle color={Colors.text.primary} size={20} style={styles.settingIcon} />
@@ -186,7 +186,7 @@ export default function ProfileScreen() {
                 </View>
                 <ChevronRight color={Colors.text.secondary} size={18} />
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.settingItem}>
                 <View style={styles.settingLeft}>
                   <Phone color={Colors.text.primary} size={20} style={styles.settingIcon} />
@@ -195,8 +195,8 @@ export default function ProfileScreen() {
                 <ChevronRight color={Colors.text.secondary} size={18} />
               </TouchableOpacity>
             </Card>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.logoutButton}
               onPress={() => {
                 Alert.alert(
@@ -218,11 +218,11 @@ export default function ProfileScreen() {
               <LogOut color={Colors.error} size={18} style={styles.logoutIcon} />
               <Text style={styles.logoutText}>{t('logout')}</Text>
             </TouchableOpacity>
-            
+
             <Text style={styles.versionText}>Version 1.0.0</Text>
           </>
         )}
-        
+
       </ScrollView>
     </View>
   );
