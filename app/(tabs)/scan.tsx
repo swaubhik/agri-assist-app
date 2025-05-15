@@ -7,7 +7,7 @@ import { useBluetooth } from '@/hooks/useBluetooth';
 import { useSoilData } from '@/hooks/useSoilData';
 import { useLocation } from '@/hooks/useLocation';
 import Colors from '@/constants/Colors';
-import { Bluetooth, RefreshCw, Leaf, Save, Share, Map } from 'lucide-react-native';
+import { Bluetooth, RefreshCw, Leaf, Save, Share, Map, Droplet, Thermometer, CloudRain, Sun, FlaskConical, Gauge, Waves } from 'lucide-react-native';
 import Card from '@/components/ui/Card';
 import NutrientGauge from '@/components/scan/NutrientGauge';
 import Button from '@/components/ui/Button';
@@ -166,45 +166,65 @@ export default function ScanScreen() {
         </Card>
 
         <Card style={styles.readingsCard}>
+          {/* Header */}
           <View style={styles.readingsHeader}>
             <Text style={styles.readingsTitle}>{t('soilNutrients')}</Text>
             <TouchableOpacity
-              style={[styles.readButton, connectedDevice ? styles.activeReadButton : styles.inactiveReadButton]}
+              style={[
+                styles.readButton,
+                connectedDevice ? styles.activeReadButton : styles.inactiveReadButton,
+              ]}
               disabled={!connectedDevice}
-              onPress={readSoilData}>
-              <RefreshCw color={connectedDevice ? '#fff' : Colors.text.disabled} size={16} style={styles.buttonIcon} />
-              <Text style={[styles.readButtonText, !connectedDevice && styles.disabledText]}>
+              onPress={readSoilData}
+            >
+              <RefreshCw
+                color={connectedDevice ? '#fff' : Colors.text.disabled}
+                size={16}
+                style={styles.buttonIcon}
+              />
+              <Text style={[
+                styles.readButtonText,
+                !connectedDevice && styles.disabledText
+              ]}>
                 {t('read')}
               </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.gaugesContainer}>
-            <NutrientGauge
-              title={t('nitrogen')}
-              value={soilData?.nitrogen ?? 0}
-              maxValue={100}
-              color="#4CAF50"
-              icon={<Leaf color="#4CAF50" size={20} />}
-            />
-
-            <NutrientGauge
-              title={t('phosphorus')}
-              value={soilData?.phosphorus ?? 0}
-              maxValue={100}
-              color="#FF9800"
-              icon={<Leaf color="#FF9800" size={20} />}
-            />
-
-            <NutrientGauge
-              title={t('potassium')}
-              value={soilData?.potassium ?? 0}
-              maxValue={100}
-              color="#2196F3"
-              icon={<Leaf color="#2196F3" size={20} />}
-            />
+          {/* Gauges Grid */}
+          <View style={styles.grid}>
+            {[
+              { key: 'nitrogen', value: soilData?.nitrogen, max: 30000, color: '#4CAF50', icon: <Leaf color="#4CAF50" size={20} /> },
+              { key: 'phosphorus', value: soilData?.phosphorus, max: 30000, color: '#FF9800', icon: <Leaf color="#FF9800" size={20} /> },
+              { key: 'potassium', value: soilData?.potassium, max: 30000, color: '#2196F3', icon: <Leaf color="#2196F3" size={20} /> },
+              { key: 'ec', value: soilData?.ec, max: 30000, color: '#9C27B0', icon: <Gauge color="#9C27B0" size={20} /> },
+              { key: 'pH', value: soilData?.pH, max: 14, color: '#00BCD4', icon: <FlaskConical color="#00BCD4" size={20} /> },
+              { key: 'soilMoisture', value: soilData?.soilMoisture, max: 30000, color: '#795548', icon: <Droplet color="#795548" size={20} /> },
+              { key: 'temperature', value: soilData?.temperature, max: 100, color: '#E91E63', icon: <Thermometer color="#E91E63" size={20} /> },
+              { key: 'humidity', value: soilData?.humidity, max: 100, color: '#3F51B5', icon: <CloudRain color="#3F51B5" size={20} /> },
+              { key: 'soilTemperature', value: soilData?.soilTemperature, max: 100, color: '#607D8B', icon: <Sun color="#607D8B" size={20} /> },
+            ].map((gauge) => (
+              <View key={gauge.key} style={styles.gaugeItem}>
+                <NutrientGauge
+                  title={t(gauge.key)}
+                  value={gauge.value ?? 0}
+                  maxValue={gauge.max}
+                  color={gauge.color}
+                  icon={gauge.icon}
+                />
+              </View>
+            ))}
           </View>
+
+
+          {/* Timestamp */}
+          {soilData?.timestamp && (
+            <Text style={styles.timestampText}>
+              {t('timestamp')}: {new Date(soilData.timestamp).toLocaleString()}
+            </Text>
+          )}
         </Card>
+
 
         {soilData && (
           <Card style={styles.actionsCard}>
@@ -325,44 +345,64 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   readingsCard: {
-    marginBottom: 16,
     padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    elevation: 4,
+    marginBottom: 16,
   },
   readingsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   readingsTitle: {
-    fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: Colors.text.primary,
+    fontWeight: '600',
+    color: '#333',
   },
   readButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
   },
   activeReadButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#4CAF50',
   },
   inactiveReadButton: {
-    backgroundColor: Colors.background.disabled,
+    backgroundColor: '#ddd',
   },
   readButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
     color: '#fff',
+    fontWeight: '600',
   },
   disabledText: {
-    color: Colors.text.disabled,
+    color: '#888',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  gaugeItem: {
+    width: '48%', // Two items per row with space
+    marginBottom: 16,
+  },
+  timestampText: {
+    textAlign: 'center',
+    marginTop: 12,
+    fontSize: 12,
+    color: '#666',
   },
   gaugesContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 20,
   },
   actionsCard: {
     marginBottom: 16,
