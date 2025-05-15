@@ -7,7 +7,7 @@ import hi from '../locales/hi.json';
 import brx from '../locales/brx.json'; // Assuming you have a brx.json file for Bodo language
 
 // Define available languages
-export type Language = 'en' | 'hi';
+export type Language = 'en' | 'hi' | 'brx';
 
 // Define context type
 interface I18nContextType {
