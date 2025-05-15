@@ -46,7 +46,7 @@ export interface SoilData {
   phosphorus?: number;
   potassium?: number;
   pH?: number;
-  moisture?: number;
+  soilMoisture?: number;
   temperature?: number; // Added from your UUIDs
   humidity?: number;    // Added
   soilTemperature?: number;
@@ -138,6 +138,7 @@ export const BluetoothProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return;
       }
       if (device) {
+        // Filter out devices that are not connectable or have no name
         console.log(`Found device: ${device.name} (${device.id})`);
         setDevices(prevDevices => {
           if (!prevDevices.find(d => d.id === device.id)) {
@@ -210,32 +211,77 @@ export const BluetoothProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // THIS IS VERY SIMPLISTIC - REAL DECODING NEEDS TO RESPECT GATT SPECS FOR EACH CHARACTERISTIC
   const decodeCharacteristicValue = (charName: string, base64Value: string | null | undefined): number | undefined => {
     if (!base64Value) return undefined;
-    const buffer = Buffer.from(base64Value, 'base64');
-    try {
-      // Refer to Bluetooth GATT Specification for data types of standard characteristics
-      // For custom characteristics, refer to your device's documentation
-      switch (charName) {
-        case 'temperature':
-        case 'soilTemperature':
-          return buffer.readInt16LE(0) / 100.0; // Example: Temperature in Celsius, 0.01 resolution
-        case 'humidity':
-          return buffer.readUInt16LE(0) / 100.0; // Example: Percentage, 0.01 resolution
-        case 'pH':
-          return buffer.readUInt16LE(0) / 100.0; // Example: pH value, 0.01 resolution
-        case 'soilMoisture':
-        case 'nitrogen':
-        case 'phosphorus':
-        case 'potassium':
-        case 'ec':
-          return buffer.readUInt16LE(0); // Example: Raw value or ppm, consult device spec
-        default:
-          console.warn(`No specific decoding for ${charName}, returning raw first byte or 0`);
-          return buffer.length > 0 ? buffer.readUInt8(0) : 0; // Fallback
-      }
-    } catch (e) {
-      console.error(`Error decoding ${charName}:`, e, "Raw:", base64Value);
+
+    const buffer = Buffer.from(base64Value, 'base64').toString('utf-8');
+
+    // Check for insufficient data
+    if (buffer.length < 2) {
+      console.warn(`Skipping ${charName} — buffer too short or invalid (length ${buffer.length})`);
       return undefined;
     }
+    try {
+      const ascii = Buffer.from(base64Value, 'base64').toString('utf-8');
+      console.log(`${charName} decoded ASCII:`, ascii);
+
+      // Match pattern like "pH:6.4" or "N:40"
+      const match = ascii.match(/[:=](\d+(\.\d+)?)/); // Matches :40 or :6.4
+      if (!match) {
+        console.warn(`Unable to extract value from ${ascii}`);
+        return undefined;
+      }
+
+      const value = parseFloat(match[1]);
+      return isNaN(value) ? undefined : value;
+
+    } catch (e) {
+      console.error(`Error decoding ${charName}:`, e, 'Raw:', base64Value);
+      return undefined;
+    }
+
+    // try {
+    //   let value: number;
+    //   // Refer to Bluetooth GATT Specification for data types of standard characteristics
+    //   // For custom characteristics, refer to your device's documentation
+    //   switch (charName) {
+    //     case 'temperature':
+    //     case 'soilTemperature':
+    //       value = buffer.readInt16LE(0) / 100.0;
+    //       break;
+
+    //     case 'humidity':
+    //       value = buffer.readUInt16LE(0) / 100.0;
+    //       break;
+
+    //     case 'pH':
+    //       value = buffer.readUInt16LE(0) / 100.0;
+    //       break;
+
+    //     case 'soilMoisture':
+    //     case 'nitrogen':
+    //     case 'phosphorus':
+    //     case 'potassium':
+    //     case 'ec':
+    //       value = buffer.readUInt16LE(0);
+    //       break;
+
+    //     default:
+    //       value = buffer.readUInt8(0);
+    //       break;
+    //     // Example: Raw value or ppm, consult device spec
+    //     // default:
+
+    //     //   console.warn(`No specific decoding for ${charName}, returning raw first byte or 0`);
+    //     //   return buffer.length > 0 ? buffer.readUInt8(0) : 0; // Fallback
+    //   }
+    //   if (isNaN(value) || !isFinite(value)) {
+    //     console.warn(`Skipping ${charName} — decoded value is invalid:`, value);
+    //     return undefined;
+    //   }
+    //   return value;
+    // } catch (e) {
+    //   console.error(`Error decoding ${charName}:`, e, "Raw:", base64Value);
+    //   return undefined;
+    // }
   };
 
   const readSoilData = useCallback(async () => {
