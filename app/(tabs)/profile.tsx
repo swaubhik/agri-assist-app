@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Switch, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import Header from '@/components/ui/Header';
@@ -35,12 +35,25 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLanguageChange = async (newLanguage: 'en' | 'hi') => {
+  const handleLanguageChange = async (newLanguage: 'en' | 'hi' | 'brx') => {
     try {
       await setLanguage(newLanguage);
       setShowLanguageModal(false);
     } catch (error) {
       Alert.alert(t('error'), 'Failed to change language');
+    }
+  };
+
+  const getLanguageLabel = (lang: string) => {
+    switch (lang) {
+      case 'en':
+        return 'English';
+      case 'hi':
+        return 'हिंदी';
+      case 'brx':
+        return 'बड़ो';
+      default:
+        return lang;
     }
   };
 
@@ -185,7 +198,7 @@ export default function ProfileScreen() {
                 </View>
                 <View style={styles.settingRight}>
                   <Text style={styles.settingValue}>
-                    {language === 'en' ? 'English' : 'हिंदी'}
+                    {getLanguageLabel(language)}
                   </Text>
                   <ChevronRight color={Colors.text.secondary} size={18} />
                 </View>
@@ -258,6 +271,17 @@ export default function ProfileScreen() {
                   हिंदी
                 </Text>
                 {language === 'hi' && (
+                  <View style={styles.checkmark} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.languageOption, language === 'brx' && styles.selectedLanguage]}
+                onPress={() => handleLanguageChange('brx')}>
+                <Text style={[styles.languageText, language === 'brx' && styles.selectedLanguageText]}>
+                  बड़ो
+                </Text>
+                {language === 'brx' && (
                   <View style={styles.checkmark} />
                 )}
               </TouchableOpacity>
