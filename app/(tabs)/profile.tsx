@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import Colors from '@/constants/Colors';
 import Card from '@/components/ui/Card';
-import { User, LogOut, ChevronRight, Bell, Globe, HelpCircle, Phone } from 'lucide-react-native';
+import { User, LogOut, ChevronRight, Bell, Globe, CircleHelp as HelpCircle, Phone } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
 
 export default function ProfileScreen() {
