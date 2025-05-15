@@ -16,6 +16,7 @@ export default function ProfileScreen() {
   const { user, logout, updateProfile } = useAuth();
   const { language, setLanguage } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -31,6 +32,15 @@ export default function ProfileScreen() {
       Alert.alert(t('success'), t('profileUpdated'));
     } catch (error) {
       Alert.alert(t('error'), t('profileUpdateFailed'));
+    }
+  };
+
+  const handleLanguageChange = async (newLanguage: 'en' | 'hi') => {
+    try {
+      await setLanguage(newLanguage);
+      setShowLanguageModal(false);
+    } catch (error) {
+      Alert.alert(t('error'), 'Failed to change language');
     }
   };
 
@@ -166,7 +176,9 @@ export default function ProfileScreen() {
                 />
               </View>
 
-              <TouchableOpacity style={styles.settingItem}>
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => setShowLanguageModal(true)}>
                 <View style={styles.settingLeft}>
                   <Globe color={Colors.text.primary} size={20} style={styles.settingIcon} />
                   <Text style={styles.settingLabel}>{t('language')}</Text>
@@ -223,6 +235,41 @@ export default function ProfileScreen() {
           </>
         )}
 
+        {showLanguageModal && (
+          <View style={styles.modalOverlay}>
+            <Card style={styles.languageModal}>
+              <Text style={styles.modalTitle}>{t('language')}</Text>
+              
+              <TouchableOpacity 
+                style={[styles.languageOption, language === 'en' && styles.selectedLanguage]}
+                onPress={() => handleLanguageChange('en')}>
+                <Text style={[styles.languageText, language === 'en' && styles.selectedLanguageText]}>
+                  English
+                </Text>
+                {language === 'en' && (
+                  <View style={styles.checkmark} />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.languageOption, language === 'hi' && styles.selectedLanguage]}
+                onPress={() => handleLanguageChange('hi')}>
+                <Text style={[styles.languageText, language === 'hi' && styles.selectedLanguageText]}>
+                  हिंदी
+                </Text>
+                {language === 'hi' && (
+                  <View style={styles.checkmark} />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setShowLanguageModal(false)}>
+                <Text style={styles.closeButtonText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+            </Card>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -405,5 +452,63 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     marginLeft: 8,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  languageModal: {
+    width: '100%',
+    padding: 16,
+  },
+  modalTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: Colors.text.primary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedLanguage: {
+    backgroundColor: Colors.primary + '10',
+  },
+  languageText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: Colors.text.primary,
+  },
+  selectedLanguageText: {
+    color: Colors.primary,
+  },
+  checkmark: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  closeButton: {
+    marginTop: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: Colors.text.secondary,
   },
 });
