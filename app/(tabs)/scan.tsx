@@ -54,6 +54,7 @@ export default function ScanScreen() {
     setIsSubmitting(true);
 
     try {
+      console.log('Submitting soil data:', soilData);
       const dataToSubmit = {
         farmerId: user.id,
         nitrogenValue: soilData.nitrogen ?? 0,
