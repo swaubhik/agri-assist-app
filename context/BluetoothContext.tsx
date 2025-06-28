@@ -363,13 +363,6 @@ export const BluetoothProvider: React.FC<{ children: React.ReactNode }> = ({
     return val;
   }
 
-  function getCharacteristicName(uuid: UUID): string {
-    return (
-      Object.keys(CHARACTERISTIC_UUIDS).find(
-        (key) => CHARACTERISTIC_UUIDS[key] === uuid
-      ) || ''
-    );
-  }
   useEffect(() => {
     const subscription = manager.onStateChange((state) => {
       console.log('Bluetooth state changed to:', state);

@@ -60,6 +60,10 @@ export default function ScanScreen() {
         nitrogenValue: soilData.nitrogen ?? 0,
         phosphorusValue: soilData.phosphorus ?? 0,
         potassiumValue: soilData.potassium ?? 0,
+        ecValue: soilData.ec ?? 0,
+        pHValue: soilData.pH ?? 0,
+        soilMoistureValue: soilData.soilMoisture ?? 0,
+        temperatureValue: soilData.temperature ?? 0,
         location: currentLocation ? {
           latitude: currentLocation.coords.latitude,
           longitude: currentLocation.coords.longitude
