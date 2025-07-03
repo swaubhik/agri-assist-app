@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/useTranslation';
 import Colors from '@/constants/Colors';
@@ -45,62 +45,35 @@ export default function MapScreen() {
       !isNaN(Number(r.latitude)) &&
       !isNaN(Number(r.longitude))
   );
-  const initialRegion = firstValid
-    ? {
-        latitude: parseFloat(firstValid.latitude),
-        longitude: parseFloat(firstValid.longitude),
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }
-    : {
-        latitude: 26.5,
-        longitude: 90.5,
-        latitudeDelta: 0.5,
-        longitudeDelta: 0.5,
-      };
+
+  // Dynamically set bbox around the first valid reading, or use default
+  let mapUrl =
+    'https://www.openstreetmap.org/export/embed.html?bbox=90.25,26.4,90.6,26.6&layer=mapnik';
+  if (firstValid) {
+    const lat = parseFloat(firstValid.latitude);
+    const lng = parseFloat(firstValid.longitude);
+    // Set a small bounding box around the point
+    const delta = 0.01;
+    const bbox = [
+      (lng - delta).toFixed(6),
+      (lat - delta).toFixed(6),
+      (lng + delta).toFixed(6),
+      (lat + delta).toFixed(6),
+    ].join(',');
+    mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
+  }
 
   return (
     <View style={styles.container}>
       <Header title={t('fieldMap')} onBackPress={() => router.back()} />
-
-      <View style={styles.mapContainer}>
-        {loading ? (
-          <ActivityIndicator style={{ marginTop: 32 }} />
-        ) : (
-          <MapView
-            style={styles.map}
-            initialRegion={initialRegion}
-            showsUserLocation={true}
-          >
-            {readings
-              .filter(
-                (r) =>
-                  r.latitude &&
-                  r.longitude &&
-                  !isNaN(Number(r.latitude)) &&
-                  !isNaN(Number(r.longitude))
-              )
-              .map((reading, index) => (
-                <Marker
-                  key={index}
-                  coordinate={{
-                    latitude: parseFloat(reading.latitude),
-                    longitude: parseFloat(reading.longitude),
-                  }}
-                  pinColor={index === 0 ? Colors.primary : Colors.secondary}
-                  title={`N: ${reading.nitrogen}, P: ${reading.phosphorus}, K: ${reading.potassium}`}
-                  description={new Date(
-                    reading.timestamp ||
-                      reading.reading_time ||
-                      reading.created_at ||
-                      ''
-                  ).toLocaleDateString()}
-                />
-              ))}
-          </MapView>
-        )}
+      <View style={styles.webviewContainer}>
+        <WebView
+          source={{ uri: mapUrl }}
+          style={styles.webview}
+          javaScriptEnabled
+          domStorageEnabled
+        />
       </View>
-
       <View style={styles.mapOverlay}>
         <Text style={styles.overlayTitle}>{t('soilReadingLocations')}</Text>
         <Text style={styles.overlayDescription}>{t('mapDescription')}</Text>
@@ -139,13 +112,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background.primary,
   },
-  mapContainer: {
+  webviewContainer: {
     flex: 1,
-    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+    margin: 8,
   },
-  map: {
-    width: '100%',
-    height: '100%',
+  webview: {
+    flex: 1,
   },
   mapOverlay: {
     backgroundColor: '#fff',
