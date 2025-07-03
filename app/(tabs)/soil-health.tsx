@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Alert,
+  RefreshControl,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import Header from '@/components/ui/Header';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -7,27 +16,59 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSoilData } from '@/hooks/useSoilData';
 import Colors from '@/constants/Colors';
 import Card from '@/components/ui/Card';
-import { Share2, PlusCircle, BarChart3, FileDown, Leaf } from 'lucide-react-native';
+import {
+  Share2,
+  PlusCircle,
+  BarChart3,
+  FileDown,
+  Leaf,
+} from 'lucide-react-native';
 import SoilHealthCard from '@/components/soil-health/SoilHealthCard';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
+import { getUserSoilReadings } from '@/services/api';
 
 export default function SoilHealthScreen() {
   const t = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
-  const { recentReadings } = useSoilData();
+  const [recentReadings, setRecentReadings] = useState([]);
+  const [loadingReadings, setLoadingReadings] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [selectedReadingIndex, setSelectedReadingIndex] = useState(0);
 
   const selectedReading = recentReadings[selectedReadingIndex];
+
+  const fetchReadings = async () => {
+    if (!user?.id) return;
+    setLoadingReadings(true);
+    const result = await getUserSoilReadings(user.id);
+    if (result.success && Array.isArray(result.data)) {
+      setRecentReadings(result.data);
+    } else {
+      setRecentReadings([]);
+    }
+    setLoadingReadings(false);
+  };
+
+  useEffect(() => {
+    fetchReadings();
+  }, [user?.id]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchReadings();
+    setRefreshing(false);
+  };
 
   const handleShare = async () => {
     if (Platform.OS === 'web') {
       Alert.alert(t('notSupported'), t('sharingNotSupportedWeb'));
       return;
     }
-    
+
     if (!selectedReading) {
       Alert.alert(t('error'), t('noReadingToShare'));
       return;
@@ -36,10 +77,10 @@ export default function SoilHealthScreen() {
     try {
       // In a real app, we'd generate a PDF or image here
       const pdfUrl = FileSystem.documentDirectory + 'soil-health-card.pdf';
-      
+
       // This is a mock - in a real app, you'd generate a real PDF
       Alert.alert(t('mock'), t('pdfGenerationMock'));
-      
+
       // Check if sharing is available
       const isSharingAvailable = await Sharing.isAvailableAsync();
       if (isSharingAvailable) {
@@ -60,79 +101,100 @@ export default function SoilHealthScreen() {
 
   return (
     <View style={styles.container}>
-      <Header
-        title={t('soilHealthCard')}
-        showBackButton={false}
-      />
-      
-      <ScrollView 
+      <Header title={t('soilHealthCard')} showBackButton={false} />
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
-        
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {recentReadings.length > 0 ? (
           <>
             <View style={styles.readingSelector}>
               <Text style={styles.selectorTitle}>{t('selectReading')}</Text>
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.readingsList}>
+                contentContainerStyle={styles.readingsList}
+              >
                 {recentReadings.map((reading, index) => (
                   <TouchableOpacity
                     key={index}
                     style={[
                       styles.readingItem,
-                      selectedReadingIndex === index && styles.selectedReadingItem
+                      selectedReadingIndex === index &&
+                        styles.selectedReadingItem,
                     ]}
-                    onPress={() => setSelectedReadingIndex(index)}>
-                    <Text style={[
-                      styles.readingDate,
-                      selectedReadingIndex === index && styles.selectedReadingDate
-                    ]}>
-                      {new Date(reading.timestamp).toLocaleDateString()}
+                    onPress={() => setSelectedReadingIndex(index)}
+                  >
+                    <Text
+                      style={[
+                        styles.readingDate,
+                        selectedReadingIndex === index &&
+                          styles.selectedReadingDate,
+                      ]}
+                    >
+                      {new Date(reading.created_at).toLocaleDateString()}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
-            
+
             {selectedReading && (
               <>
-                <SoilHealthCard reading={selectedReading} userName={user.name} />
-                
+                <SoilHealthCard
+                  reading={selectedReading}
+                  userName={user.name}
+                />
+
                 <View style={styles.actionsContainer}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.actionButton}
-                    onPress={handleShare}>
+                    onPress={handleShare}
+                  >
                     <Share2 color={Colors.primary} size={20} />
                     <Text style={styles.actionText}>{t('share')}</Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={styles.actionButton}
                     onPress={() => {
                       Alert.alert(t('mock'), t('downloadMock'));
-                    }}>
+                    }}
+                  >
                     <FileDown color={Colors.primary} size={20} />
                     <Text style={styles.actionText}>{t('download')}</Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={styles.actionButton}
-                    onPress={() => router.push('/recommendations')}>
+                    onPress={() => router.push('/recommendations')}
+                  >
                     <BarChart3 color={Colors.primary} size={20} />
-                    <Text style={styles.actionText}>{t('viewRecommendations')}</Text>
+                    <Text style={styles.actionText}>
+                      {t('viewRecommendations')}
+                    </Text>
                   </TouchableOpacity>
                 </View>
-                
+
                 <Card style={styles.historyCard}>
-                  <Text style={styles.historyTitle}>{t('soilHealthHistory')}</Text>
-                  <Text style={styles.historyDescription}>{t('soilHealthHistoryDesc')}</Text>
-                  <TouchableOpacity 
+                  <Text style={styles.historyTitle}>
+                    {t('soilHealthHistory')}
+                  </Text>
+                  <Text style={styles.historyDescription}>
+                    {t('soilHealthHistoryDesc')}
+                  </Text>
+                  <TouchableOpacity
                     style={styles.historyButton}
-                    onPress={() => router.push('/(modals)/soil-trends')}>
-                    <Text style={styles.historyButtonText}>{t('viewTrends')}</Text>
+                    onPress={() => router.push('/(modals)/soil-trends')}
+                  >
+                    <Text style={styles.historyButtonText}>
+                      {t('viewTrends')}
+                    </Text>
                   </TouchableOpacity>
                 </Card>
               </>
@@ -143,15 +205,15 @@ export default function SoilHealthScreen() {
             <Leaf color={Colors.text.secondary} size={48} />
             <Text style={styles.emptyTitle}>{t('noReadingsTitle')}</Text>
             <Text style={styles.emptyText}>{t('noReadingsDesc')}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.scanButton}
-              onPress={() => router.push('/scan')}>
+              onPress={() => router.push('/scan')}
+            >
               <PlusCircle color="#fff" size={18} style={styles.buttonIcon} />
               <Text style={styles.scanButtonText}>{t('takeReading')}</Text>
             </TouchableOpacity>
           </Card>
         )}
-        
       </ScrollView>
     </View>
   );

@@ -1,10 +1,22 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/hooks/useAuth';
 import Colors from '@/constants/Colors';
 import Button from '@/components/ui/Button';
+import Geolocation from '@react-native-community/geolocation'; // or use Expo Location
 
 export default function LoginScreen() {
   const t = useTranslation();
@@ -15,21 +27,43 @@ export default function LoginScreen() {
   const [formData, setFormData] = useState({
     phone: '',
     password: '',
+    passwordConfirmation: '',
     name: '',
     location: '',
     landSize: '',
   });
 
+  // Add coordinates to state
+  const [coordinates, setCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  useEffect(() => {
+    Geolocation.getCurrentPosition(
+      (position) => {
+        setCoordinates({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => {
+        console.error('Location error:', error);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
+    );
+  }, []);
+
   const handleSubmit = async () => {
     setLoading(true);
-    
+
     try {
       if (isLogin) {
         // Login flow
         if (!formData.phone || !formData.password) {
           throw new Error(t('allFieldsRequired'));
         }
-        
+
         await login(formData.phone, formData.password);
         router.replace('/(tabs)');
       } else {
@@ -37,20 +71,21 @@ export default function LoginScreen() {
         if (!formData.name || !formData.phone || !formData.password) {
           throw new Error(t('requiredFieldsMissing'));
         }
-        
+
         await register({
           name: formData.name,
           phone: formData.phone,
           password: formData.password,
-          location: formData.location,
+          password_confirmation: formData.passwordConfirmation, // <-- add this
+          location: coordinates
+            ? `${coordinates.latitude},${coordinates.longitude}`
+            : '', // <-- use GPS
           landSize: formData.landSize,
         });
-        
-        Alert.alert(
-          t('registrationSuccess'),
-          t('accountCreated'),
-          [{ text: t('continue'), onPress: () => setIsLogin(true) }]
-        );
+
+        Alert.alert(t('registrationSuccess'), t('accountCreated'), [
+          { text: t('continue'), onPress: () => setIsLogin(true) },
+        ]);
       }
     } catch (error) {
       Alert.alert(
@@ -64,10 +99,10 @@ export default function LoginScreen() {
 
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
-    // Reset form when switching between login and register
     setFormData({
       phone: formData.phone,
       password: '',
+      passwordConfirmation: '',
       name: '',
       location: '',
       landSize: '',
@@ -78,14 +113,17 @@ export default function LoginScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerContainer}>
           <Image
-            source={{ uri: "https://images.pexels.com/photos/5273645/pexels-photo-5273645.jpeg?auto=compress&cs=tinysrgb&w=800" }}
+            source={{
+              uri: 'https://images.pexels.com/photos/5273645/pexels-photo-5273645.jpeg?auto=compress&cs=tinysrgb&w=800',
+            }}
             style={styles.headerImage}
           />
           <View style={styles.overlay} />
@@ -94,12 +132,12 @@ export default function LoginScreen() {
             <Text style={styles.tagline}>{t('appTagline')}</Text>
           </View>
         </View>
-        
+
         <View style={styles.formContainer}>
           <Text style={styles.authTitle}>
             {isLogin ? t('loginToAccount') : t('createAccount')}
           </Text>
-          
+
           {!isLogin && (
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('name')}</Text>
@@ -107,11 +145,13 @@ export default function LoginScreen() {
                 style={styles.input}
                 placeholder={t('enterName')}
                 value={formData.name}
-                onChangeText={(text) => setFormData({ ...formData, name: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, name: text })
+                }
               />
             </View>
           )}
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>{t('phone')}</Text>
             <TextInput
@@ -122,7 +162,7 @@ export default function LoginScreen() {
               onChangeText={(text) => setFormData({ ...formData, phone: text })}
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>{t('password')}</Text>
             <TextInput
@@ -130,22 +170,39 @@ export default function LoginScreen() {
               placeholder={t('enterPassword')}
               secureTextEntry
               value={formData.password}
-              onChangeText={(text) => setFormData({ ...formData, password: text })}
+              onChangeText={(text) =>
+                setFormData({ ...formData, password: text })
+              }
             />
           </View>
-          
+
           {!isLogin && (
             <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>{t('confirmPassword')}</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder={t('enterPasswordAgain')}
+                  secureTextEntry
+                  value={formData.passwordConfirmation}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, passwordConfirmation: text })
+                  }
+                />
+              </View>
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>{t('location')}</Text>
                 <TextInput
                   style={styles.input}
                   placeholder={t('enterLocation')}
                   value={formData.location}
-                  onChangeText={(text) => setFormData({ ...formData, location: text })}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, location: text })
+                  }
                 />
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>{t('landSize')}</Text>
                 <TextInput
@@ -153,19 +210,21 @@ export default function LoginScreen() {
                   placeholder={t('enterLandSizeInAcres')}
                   keyboardType="numeric"
                   value={formData.landSize}
-                  onChangeText={(text) => setFormData({ ...formData, landSize: text })}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, landSize: text })
+                  }
                 />
               </View>
             </>
           )}
-          
+
           <Button
             label={isLogin ? t('login') : t('register')}
             onPress={handleSubmit}
             isLoading={loading}
             style={styles.submitButton}
           />
-          
+
           <View style={styles.switchContainer}>
             <Text style={styles.switchText}>
               {isLogin ? t('noAccount') : t('alreadyHaveAccount')}
@@ -176,20 +235,24 @@ export default function LoginScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-          
+
           {isLogin && (
             <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>{t('forgotPassword')}</Text>
+              <Text style={styles.forgotPasswordText}>
+                {t('forgotPassword')}
+              </Text>
             </TouchableOpacity>
           )}
-          
+
           {Platform.OS === 'web' && (
             <View style={styles.mockNotice}>
               <Text style={styles.mockText}>{t('mockLoginNotice')}</Text>
-              <TouchableOpacity onPress={() => {
-                login('demo', 'password');
-                router.replace('/(tabs)');
-              }}>
+              <TouchableOpacity
+                onPress={() => {
+                  login('demo', 'password');
+                  router.replace('/(tabs)');
+                }}
+              >
                 <Text style={styles.mockAction}>{t('useDemoAccount')}</Text>
               </TouchableOpacity>
             </View>

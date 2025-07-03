@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   totalWaterLabel: {
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
   },
   totalWaterValue: {

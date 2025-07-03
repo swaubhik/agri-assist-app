@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { loginApi, registerApi } from '../services/api'; // <-- Import your API functions
 
 // Define user type
 export interface User {
@@ -15,6 +16,7 @@ interface RegisterParams {
   name: string;
   phone: string;
   password: string;
+  password_confirmation: string; // <-- add this
   location?: string;
   landSize?: string;
 }
@@ -42,7 +44,9 @@ export const AuthContext = createContext<AuthContextType>({
 // Storage keys
 const USER_STORAGE_KEY = 'farmer_assistant_user';
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -65,78 +69,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
   }, []);
 
-  // Mock login function
+  // REAL login function using Laravel Sanctum API
   const login = async (phone: string, password: string) => {
     try {
       setLoading(true);
-      
-      // In a real app, this would be an API call
-      // For demo, simulate a delay and mock response
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (phone === 'demo' && password === 'password') {
-        const userData: User = {
-          id: '12345',
-          name: 'Demo Farmer',
-          phone: '9876543210',
-          location: 'Punjab, India',
-          landSize: '5 acres',
-        };
-        
-        // Save to storage
-        await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-        setUser(userData);
-        return;
+      const result = await loginApi(phone, password);
+      if (result.success && result.user) {
+        await AsyncStorage.setItem(
+          USER_STORAGE_KEY,
+          JSON.stringify(result.user)
+        );
+        setUser(result.user);
+      } else {
+        throw new Error(result.message || 'Login failed. Please try again.');
       }
-      
-      // Mock any phone number and password combo will work for demo
-      const userData: User = {
-        id: Math.random().toString(36).substring(2, 15),
-        name: 'Farmer User',
-        phone,
-        location: '',
-        landSize: '',
-      };
-      
-      // Save to storage
-      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-      setUser(userData);
     } catch (error) {
       console.error('Login error:', error);
-      throw new Error('Login failed. Please try again.');
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : 'Login failed. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock register function
+  // REAL register function using Laravel Sanctum API
   const register = async (params: RegisterParams) => {
     try {
       setLoading(true);
-      
-      // In a real app, this would be an API call
-      // For demo, simulate a delay and create a mock user
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const userData: User = {
-        id: Math.random().toString(36).substring(2, 15),
-        name: params.name,
-        phone: params.phone,
-        location: params.location,
-        landSize: params.landSize,
-      };
-      
-      // Save to storage
-      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-      setUser(userData);
+      const result = await registerApi(params);
+      if (result.success && result.user) {
+        await AsyncStorage.setItem(
+          USER_STORAGE_KEY,
+          JSON.stringify(result.user)
+        );
+        setUser(result.user);
+      } else {
+        throw new Error(
+          result.message || 'Registration failed. Please try again.'
+        );
+      }
     } catch (error) {
       console.error('Registration error:', error);
-      throw new Error('Registration failed. Please try again.');
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : 'Registration failed. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
-  
+
   // Logout function
   const logout = async () => {
     try {
@@ -150,14 +136,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     }
   };
-  
+
   // Update profile function
   const updateProfile = async (data: Partial<User>) => {
     try {
       if (!user) {
         throw new Error('No user logged in');
       }
-      
+
       const updatedUser = { ...user, ...data };
       await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       setUser(updatedUser);
@@ -168,7 +154,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, logout, updateProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

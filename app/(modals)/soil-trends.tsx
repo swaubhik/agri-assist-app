@@ -1,44 +1,88 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useSoilData } from '@/hooks/useSoilData';
+import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/ui/Header';
 import Colors from '@/constants/Colors';
 import { LineChart } from 'react-native-chart-kit';
 import Card from '@/components/ui/Card';
+import { getUserSoilReadings } from '@/services/api';
 
 export default function SoilTrendsScreen() {
   const t = useTranslation();
   const router = useRouter();
-  const { recentReadings } = useSoilData();
-  
+  const { user } = useAuth();
+
+  type SoilReading = {
+    nitrogen?: number | string;
+    phosphorus?: number | string;
+    potassium?: number | string;
+    timestamp?: string;
+    reading_time?: string;
+    created_at?: string;
+    // Add any other fields as needed
+  };
+
+  const [readings, setReadings] = useState<SoilReading[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchReadings = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    const result = await getUserSoilReadings(user.id);
+    if (result.success && Array.isArray(result.data)) {
+      setReadings(result.data);
+    } else {
+      setReadings([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchReadings();
+  }, [user?.id]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchReadings();
+    setRefreshing(false);
+  };
+
   // Extract data for charts
-  const labels = recentReadings
+  const labels = readings
     .slice()
     .reverse()
-    .map(reading => {
-      const date = new Date(reading.timestamp);
+    .map((reading) => {
+      const dateStr = reading.timestamp || reading.created_at || '';
+      const date = new Date(dateStr);
       return `${date.getMonth() + 1}/${date.getDate()}`;
     });
-  
-  const nitrogenData = recentReadings
+
+  const nitrogenData = readings
     .slice()
     .reverse()
-    .map(reading => reading.nitrogen);
-  
-  const phosphorusData = recentReadings
+    .map((reading) => Number(reading.nitrogen ?? 0));
+  const phosphorusData = readings
     .slice()
     .reverse()
-    .map(reading => reading.phosphorus);
-  
-  const potassiumData = recentReadings
+    .map((reading) => Number(reading.phosphorus ?? 0));
+  const potassiumData = readings
     .slice()
     .reverse()
-    .map(reading => reading.potassium);
-  
+    .map((reading) => Number(reading.potassium ?? 0));
+
   const chartWidth = Dimensions.get('window').width - 32;
-  
+
   const chartConfig = {
     backgroundColor: '#ffffff',
     backgroundGradientFrom: '#ffffff',
@@ -54,24 +98,24 @@ export default function SoilTrendsScreen() {
       strokeWidth: '2',
     },
   };
-  
+
   return (
     <View style={styles.container}>
-      <Header
-        title={t('soilTrends')}
-        onBackPress={() => router.back()}
-      />
-      
+      <Header title={t('soilTrends')} onBackPress={() => router.back()} />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
-        
-        <Text style={styles.description}>
-          {t('soilTrendsDescription')}
-        </Text>
-        
-        {recentReadings.length > 1 ? (
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <Text style={styles.description}>{t('soilTrendsDescription')}</Text>
+
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 32 }} />
+        ) : readings.length > 1 ? (
           <>
             <Card style={styles.chartCard}>
               <Text style={styles.chartTitle}>{t('nitrogenTrend')}</Text>
@@ -96,7 +140,7 @@ export default function SoilTrendsScreen() {
                 style={styles.chart}
               />
             </Card>
-            
+
             <Card style={styles.chartCard}>
               <Text style={styles.chartTitle}>{t('phosphorusTrend')}</Text>
               <LineChart
@@ -120,7 +164,7 @@ export default function SoilTrendsScreen() {
                 style={styles.chart}
               />
             </Card>
-            
+
             <Card style={styles.chartCard}>
               <Text style={styles.chartTitle}>{t('potassiumTrend')}</Text>
               <LineChart
@@ -144,12 +188,10 @@ export default function SoilTrendsScreen() {
                 style={styles.chart}
               />
             </Card>
-            
+
             <Card style={styles.insightsCard}>
               <Text style={styles.insightsTitle}>{t('soilInsights')}</Text>
-              <Text style={styles.insightsText}>
-                {t('trendInsights')}
-              </Text>
+              <Text style={styles.insightsText}>{t('trendInsights')}</Text>
             </Card>
           </>
         ) : (

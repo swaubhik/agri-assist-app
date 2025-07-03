@@ -19,8 +19,8 @@ const GATT_SERVICE_UUID = '00001801-0000-1000-8000-00805f9b34fb'; // Generic Att
 const CHARACTERISTIC_UUIDS: Record<string, UUID> = {
   temperature: '00002a6e-0000-1000-8000-00805f9b34fb',
   humidity: '00002a6f-0000-1000-8000-00805f9b34fb',
-  // altitude: "00002ab3-0000-1000-8000-00805f9b34fb", // Example, add if needed
-  // pressure: "00002c11-0000-1000-8000-00805f9b34fb", // Example
+  altitude: '00002ab3-0000-1000-8000-00805f9b34fb', // Example, add if needed
+  pressure: '00002c11-0000-1000-8000-00805f9b34fb', // Example
   soilTemperature: '00002c14-0000-1000-8000-00805f9b34fb', // Custom or less common standard
   soilMoisture: '00002c15-0000-1000-8000-00805f9b34fb', // Custom or less common standard
   ec: '00002c06-0000-1000-8000-00805f9b34fb', // Custom or less common standard
@@ -160,8 +160,8 @@ export const BluetoothProvider: React.FC<{ children: React.ReactNode }> = ({
           );
           return;
         }
-        if (device && device.name) {
-          // Filter out devices that are not connectable or have no name
+        // Only add the target device
+        if (device && device.name === 'STIHUB CITK Soil IoT') {
           console.log(`Found device: ${device.name} (${device.id})`);
           setDevices((prevDevices) => {
             if (!prevDevices.find((d) => d.id === device.id)) {
@@ -169,7 +169,7 @@ export const BluetoothProvider: React.FC<{ children: React.ReactNode }> = ({
                 ...prevDevices,
                 {
                   id: device.id,
-                  name: device.name || 'Unknown Device',
+                  name: device.name ?? undefined,
                   rssi: device.rssi ?? undefined,
                   connectable: device.isConnectable ?? undefined,
                 },
@@ -327,7 +327,7 @@ export const BluetoothProvider: React.FC<{ children: React.ReactNode }> = ({
                 const key = getCharacteristicName(characteristic.uuid);
 
                 if (key && typeof value === 'number') {
-                  console.log(`Monitored ${key}: ${value}`);
+                  // console.log(`Monitored ${key}: ${value}`);
                   setSoilData((prev) => ({
                     ...prev,
                     [key]: value,
@@ -359,8 +359,29 @@ export const BluetoothProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [connectedDevice]);
   function parseCharacteristicValue(characteristic: Characteristic): number {
     const buffer = Buffer.from(characteristic.value!, 'base64');
-    const val = buffer.readInt16LE() / 100;
-    return val;
+    // Get the characteristic name by UUID
+    const charName = Object.keys(CHARACTERISTIC_UUIDS).find(
+      (key) => CHARACTERISTIC_UUIDS[key] === characteristic.uuid
+    );
+
+    // List of soil characteristics that should NOT be divided by 100
+    const soilKeys = [
+      // 'soilTemperature',
+      'soilMoisture',
+      'ec',
+      'pH',
+      'nitrogen',
+      'phosphorus',
+      'potassium',
+    ];
+
+    if (charName && soilKeys.includes(charName)) {
+      // For soil characteristics, just return the raw value (Int16LE)
+      return buffer.readInt16LE();
+    } else {
+      // For others (like temperature, humidity), divide by 100
+      return buffer.readInt16LE() / 100;
+    }
   }
 
   useEffect(() => {

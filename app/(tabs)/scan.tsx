@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import Header from '@/components/ui/Header';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -7,7 +16,21 @@ import { useBluetooth } from '@/hooks/useBluetooth';
 import { useSoilData } from '@/hooks/useSoilData';
 import { useLocation } from '@/hooks/useLocation';
 import Colors from '@/constants/Colors';
-import { Bluetooth, RefreshCw, Leaf, Save, Share, Map, Droplet, Thermometer, CloudRain, Sun, FlaskConical, Gauge, Waves } from 'lucide-react-native';
+import {
+  Bluetooth,
+  RefreshCw,
+  Leaf,
+  Save,
+  Share,
+  Map,
+  Droplet,
+  Thermometer,
+  CloudRain,
+  Sun,
+  FlaskConical,
+  Gauge,
+  Waves,
+} from 'lucide-react-native';
 import Card from '@/components/ui/Card';
 import NutrientGauge from '@/components/scan/NutrientGauge';
 import Button from '@/components/ui/Button';
@@ -29,7 +52,7 @@ export default function ScanScreen() {
     scanForDevices,
     connectToDevice,
     disconnectFromDevice,
-    readSoilData
+    readSoilData,
   } = useBluetooth();
   const { saveSoilReading } = useSoilData();
   const { currentLocation, getLocation } = useLocation();
@@ -56,18 +79,22 @@ export default function ScanScreen() {
     try {
       console.log('Submitting soil data:', soilData);
       const dataToSubmit = {
-        farmerId: user.id,
-        nitrogenValue: soilData.nitrogen ?? 0,
-        phosphorusValue: soilData.phosphorus ?? 0,
-        potassiumValue: soilData.potassium ?? 0,
-        ecValue: soilData.ec ?? 0,
-        pHValue: soilData.pH ?? 0,
-        soilMoistureValue: soilData.soilMoisture ?? 0,
-        temperatureValue: soilData.temperature ?? 0,
-        location: currentLocation ? {
-          latitude: currentLocation.coords.latitude,
-          longitude: currentLocation.coords.longitude
-        } : undefined
+        user_id: user.id,
+        nitrogen: String(soilData.nitrogen ?? ''),
+        phosphorus: String(soilData.phosphorus ?? ''),
+        potassium: String(soilData.potassium ?? ''),
+        ec: String(soilData.ec ?? ''),
+        pH: String(soilData.pH ?? ''),
+        soilMoisture: String(soilData.soilMoisture ?? ''),
+        temperature: String(soilData.temperature ?? ''),
+        // Add other fields as needed
+        latitude: currentLocation ? currentLocation.coords.latitude : undefined,
+        longitude: currentLocation
+          ? currentLocation.coords.longitude
+          : undefined,
+        // Optionally: reading_time, device_id, etc.
+        timestamp: new Date().toISOString(),
+        device_id: connectedDevice ? connectedDevice.id : undefined,
       };
 
       const response = await submitSoilData(dataToSubmit);
@@ -76,26 +103,24 @@ export default function ScanScreen() {
         saveSoilReading({
           ...soilData,
           timestamp: new Date().toISOString(),
-          location: currentLocation ? {
-            latitude: currentLocation.coords.latitude,
-            longitude: currentLocation.coords.longitude
-          } : undefined
+          location: currentLocation
+            ? {
+                latitude: currentLocation.coords.latitude,
+                longitude: currentLocation.coords.longitude,
+              }
+            : undefined,
         });
 
-        Alert.alert(
-          t('success'),
-          t('dataSaved'),
-          [
-            {
-              text: t('viewRecommendations'),
-              onPress: () => router.push('/recommendations')
-            },
-            {
-              text: t('ok'),
-              style: 'cancel'
-            }
-          ]
-        );
+        Alert.alert(t('success'), t('dataSaved'), [
+          {
+            text: t('viewRecommendations'),
+            onPress: () => router.push('/recommendations'),
+          },
+          {
+            text: t('ok'),
+            style: 'cancel',
+          },
+        ]);
       } else {
         throw new Error('Submission failed');
       }
@@ -109,47 +134,60 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      <Header
-        title={t('soilScan')}
-        showBackButton={false}
-      />
+      <Header title={t('soilScan')} showBackButton={false} />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
-
+        showsVerticalScrollIndicator={false}
+      >
         <Card style={styles.deviceCard}>
           <View style={styles.deviceHeader}>
             <Text style={styles.deviceTitle}>
               {connectedDevice
-                ? t('connectedTo', { name: connectedDevice.name || connectedDevice.id })
+                ? t('connectedTo', {
+                    name: connectedDevice.name || connectedDevice.id,
+                  })
                 : t('noDeviceConnected')}
             </Text>
 
             {connectedDevice ? (
               <TouchableOpacity
                 style={[styles.deviceButton, styles.disconnectButton]}
-                onPress={disconnectFromDevice}>
-                <Text style={styles.disconnectButtonText}>{t('disconnect')}</Text>
+                onPress={disconnectFromDevice}
+              >
+                <Text style={styles.disconnectButtonText}>
+                  {t('disconnect')}
+                </Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[styles.deviceButton, isScanning ? styles.scanningButton : styles.scanButton]}
+                style={[
+                  styles.deviceButton,
+                  isScanning ? styles.scanningButton : styles.scanButton,
+                ]}
                 onPress={() => {
                   if (isScanning) return;
                   if (Platform.OS === 'web') {
-                    Alert.alert(t('notSupported'), t('bluetoothWebNotSupported'));
+                    Alert.alert(
+                      t('notSupported'),
+                      t('bluetoothWebNotSupported')
+                    );
                     return;
                   }
                   setShowDeviceList(true);
                   scanForDevices();
-                }}>
+                }}
+              >
                 {isScanning ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    <Bluetooth color="#fff" size={16} style={styles.buttonIcon} />
+                    <Bluetooth
+                      color="#fff"
+                      size={16}
+                      style={styles.buttonIcon}
+                    />
                     <Text style={styles.scanButtonText}>{t('scan')}</Text>
                   </>
                 )}
@@ -177,7 +215,9 @@ export default function ScanScreen() {
             <TouchableOpacity
               style={[
                 styles.readButton,
-                connectedDevice ? styles.activeReadButton : styles.inactiveReadButton,
+                connectedDevice
+                  ? styles.activeReadButton
+                  : styles.inactiveReadButton,
               ]}
               disabled={!connectedDevice}
               onPress={readSoilData}
@@ -187,10 +227,12 @@ export default function ScanScreen() {
                 size={16}
                 style={styles.buttonIcon}
               />
-              <Text style={[
-                styles.readButtonText,
-                !connectedDevice && styles.disabledText
-              ]}>
+              <Text
+                style={[
+                  styles.readButtonText,
+                  !connectedDevice && styles.disabledText,
+                ]}
+              >
                 {t('read')}
               </Text>
             </TouchableOpacity>
@@ -199,15 +241,69 @@ export default function ScanScreen() {
           {/* Gauges Grid */}
           <View style={styles.grid}>
             {[
-              { key: 'nitrogen', value: soilData?.nitrogen, max: 30000, color: '#4CAF50', icon: <Leaf color="#4CAF50" size={20} /> },
-              { key: 'phosphorus', value: soilData?.phosphorus, max: 30000, color: '#FF9800', icon: <Leaf color="#FF9800" size={20} /> },
-              { key: 'potassium', value: soilData?.potassium, max: 30000, color: '#2196F3', icon: <Leaf color="#2196F3" size={20} /> },
-              { key: 'ec', value: soilData?.ec, max: 30000, color: '#9C27B0', icon: <Gauge color="#9C27B0" size={20} /> },
-              { key: 'pH', value: soilData?.pH, max: 14, color: '#00BCD4', icon: <FlaskConical color="#00BCD4" size={20} /> },
-              { key: 'soilMoisture', value: soilData?.soilMoisture, max: 30000, color: '#795548', icon: <Droplet color="#795548" size={20} /> },
-              { key: 'temperature', value: soilData?.temperature, max: 100, color: '#E91E63', icon: <Thermometer color="#E91E63" size={20} /> },
-              { key: 'humidity', value: soilData?.humidity, max: 100, color: '#3F51B5', icon: <CloudRain color="#3F51B5" size={20} /> },
-              { key: 'soilTemperature', value: soilData?.soilTemperature, max: 100, color: '#607D8B', icon: <Sun color="#607D8B" size={20} /> },
+              {
+                key: 'nitrogen',
+                value: soilData?.nitrogen,
+                max: 300,
+                color: '#4CAF50',
+                icon: <Leaf color="#4CAF50" size={20} />,
+              },
+              {
+                key: 'phosphorus',
+                value: soilData?.phosphorus,
+                max: 300,
+                color: '#FF9800',
+                icon: <Leaf color="#FF9800" size={20} />,
+              },
+              {
+                key: 'potassium',
+                value: soilData?.potassium,
+                max: 300,
+                color: '#2196F3',
+                icon: <Leaf color="#2196F3" size={20} />,
+              },
+              {
+                key: 'ec',
+                value: soilData?.ec,
+                max: 300,
+                color: '#9C27B0',
+                icon: <Gauge color="#9C27B0" size={20} />,
+              },
+              {
+                key: 'pH',
+                value: soilData?.pH,
+                max: 14,
+                color: '#00BCD4',
+                icon: <FlaskConical color="#00BCD4" size={20} />,
+              },
+              {
+                key: 'soilMoisture',
+                value: soilData?.soilMoisture,
+                max: 30000,
+                color: '#795548',
+                icon: <Droplet color="#795548" size={20} />,
+              },
+              {
+                key: 'temperature',
+                value: soilData?.temperature,
+                max: 100,
+                color: '#E91E63',
+                icon: <Thermometer color="#E91E63" size={20} />,
+              },
+              {
+                key: 'humidity',
+                value: soilData?.humidity,
+                max: 100,
+                color: '#3F51B5',
+                icon: <CloudRain color="#3F51B5" size={20} />,
+              },
+              {
+                key: 'soilTemperature',
+                value: soilData?.soilTemperature,
+                max: 100,
+                color: '#607D8B',
+                icon: <Sun color="#607D8B" size={20} />,
+              },
             ].map((gauge) => (
               <View key={gauge.key} style={styles.gaugeItem}>
                 <NutrientGauge
@@ -221,7 +317,6 @@ export default function ScanScreen() {
             ))}
           </View>
 
-
           {/* Timestamp */}
           {soilData?.timestamp && (
             <Text style={styles.timestampText}>
@@ -229,7 +324,6 @@ export default function ScanScreen() {
             </Text>
           )}
         </Card>
-
 
         {soilData && (
           <Card style={styles.actionsCard}>
@@ -249,7 +343,10 @@ export default function ScanScreen() {
                   label={t('viewOnMap')}
                   onPress={() => router.push('/(modals)/map')}
                   icon={<Map size={18} color="#fff" />}
-                  style={StyleSheet.flatten([styles.secondaryButton, styles.halfButton])}
+                  style={StyleSheet.flatten([
+                    styles.secondaryButton,
+                    styles.halfButton,
+                  ])}
                   variant="secondary"
                 />
 
@@ -260,7 +357,10 @@ export default function ScanScreen() {
                     Alert.alert(t('comingSoon'), t('featureNotAvailable'));
                   }}
                   icon={<Share size={18} color="#fff" />}
-                  style={StyleSheet.flatten([styles.secondaryButton, styles.halfButton])}
+                  style={StyleSheet.flatten([
+                    styles.secondaryButton,
+                    styles.halfButton,
+                  ])}
                   variant="secondary"
                 />
               </View>
@@ -273,21 +373,27 @@ export default function ScanScreen() {
           <Card style={styles.locationCard}>
             {currentLocation ? (
               <Text style={styles.locationText}>
-                {`${currentLocation.coords.latitude.toFixed(6)}, ${currentLocation.coords.longitude.toFixed(6)}`}
+                {`${currentLocation.coords.latitude.toFixed(
+                  6
+                )}, ${currentLocation.coords.longitude.toFixed(6)}`}
               </Text>
             ) : (
-              <Text style={styles.locationTextDisabled}>{t('locationNotAvailable')}</Text>
+              <Text style={styles.locationTextDisabled}>
+                {t('locationNotAvailable')}
+              </Text>
             )}
 
             <TouchableOpacity
               style={styles.refreshLocationButton}
-              onPress={getLocation}>
+              onPress={getLocation}
+            >
               <RefreshCw color={Colors.primary} size={16} />
-              <Text style={styles.refreshLocationText}>{t('refreshLocation')}</Text>
+              <Text style={styles.refreshLocationText}>
+                {t('refreshLocation')}
+              </Text>
             </TouchableOpacity>
           </Card>
         </View>
-
       </ScrollView>
     </View>
   );

@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image,
+  RefreshControl,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import Header from '@/components/ui/Header';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -10,6 +19,7 @@ import Card from '@/components/ui/Card';
 import { Leaf, Droplet, FilterX, ArrowUpRight } from 'lucide-react-native';
 import { getRecommendations } from '@/services/api';
 import RecommendationCard from '@/components/recommendations/RecommendationCard';
+import Markdown from 'react-native-markdown-display';
 
 export default function RecommendationsScreen() {
   const t = useTranslation();
@@ -19,6 +29,7 @@ export default function RecommendationsScreen() {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (user && recentReadings.length > 0) {
@@ -28,24 +39,31 @@ export default function RecommendationsScreen() {
 
   const fetchRecommendations = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
       const response = await getRecommendations(user.id);
       if (response.success) {
         setRecommendations(response.data);
+        // console.log('Fetched recommendations:', response.data);
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const filteredRecommendations = recommendations.filter(rec => {
-    if (selectedFilter === 'all') return true;
-    return rec.category === selectedFilter;
-  });
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchRecommendations();
+  };
+
+  // const filteredRecommendations = recommendations.filter((rec) => {
+  //   if (selectedFilter === 'all') return true;
+  //   return rec.category === selectedFilter;
+  // });
 
   const mockRecommendations = [
     {
@@ -54,10 +72,25 @@ export default function RecommendationsScreen() {
       category: 'crops',
       description: t('suitableCrops'),
       items: [
-        { name: t('wheat'), score: 92, image: 'https://images.pexels.com/photos/326082/pexels-photo-326082.jpeg?auto=compress&cs=tinysrgb&w=800' },
-        { name: t('maize'), score: 85, image: 'https://images.pexels.com/photos/547263/pexels-photo-547263.jpeg?auto=compress&cs=tinysrgb&w=800' },
-        { name: t('soybean'), score: 78, image: 'https://images.pexels.com/photos/5528991/pexels-photo-5528991.jpeg?auto=compress&cs=tinysrgb&w=800' }
-      ]
+        {
+          name: t('wheat'),
+          score: 92,
+          image:
+            'https://images.pexels.com/photos/326082/pexels-photo-326082.jpeg?auto=compress&cs=tinysrgb&w=800',
+        },
+        {
+          name: t('maize'),
+          score: 85,
+          image:
+            'https://images.pexels.com/photos/547263/pexels-photo-547263.jpeg?auto=compress&cs=tinysrgb&w=800',
+        },
+        {
+          name: t('soybean'),
+          score: 78,
+          image:
+            'https://images.pexels.com/photos/5528991/pexels-photo-5528991.jpeg?auto=compress&cs=tinysrgb&w=800',
+        },
+      ],
     },
     {
       id: '2',
@@ -67,8 +100,12 @@ export default function RecommendationsScreen() {
       items: [
         { name: t('npk101010'), dosage: '120kg/ha', timing: t('prePlanting') },
         { name: t('urea'), dosage: '80kg/ha', timing: t('midGrowth') },
-        { name: t('potassiumSulfate'), dosage: '40kg/ha', timing: t('flowering') }
-      ]
+        {
+          name: t('potassiumSulfate'),
+          dosage: '40kg/ha',
+          timing: t('flowering'),
+        },
+      ],
     },
     {
       id: '3',
@@ -77,67 +114,125 @@ export default function RecommendationsScreen() {
       description: t('irrigationPlanning'),
       schedule: [
         { day: t('monday'), amount: '30mm', time: t('morning') },
-        { day: t('thursday'), amount: '25mm', time: t('evening') }
+        { day: t('thursday'), amount: '25mm', time: t('evening') },
       ],
-      totalWater: '55mm/week'
-    }
+      totalWater: '55mm/week',
+    },
   ];
 
   return (
     <View style={styles.container}>
-      <Header
-        title={t('recommendations')}
-        showBackButton={false}
-      />
-      
+      <Header title={t('recommendations')} showBackButton={false} />
+
       <View style={styles.filtersContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filters}
+        >
           <TouchableOpacity
-            style={[styles.filterButton, selectedFilter === 'all' && styles.filterButtonActive]}
-            onPress={() => setSelectedFilter('all')}>
-            <Text style={[styles.filterText, selectedFilter === 'all' && styles.filterTextActive]}>
+            style={[
+              styles.filterButton,
+              selectedFilter === 'all' && styles.filterButtonActive,
+            ]}
+            onPress={() => setSelectedFilter('all')}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === 'all' && styles.filterTextActive,
+              ]}
+            >
               {t('all')}
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
-            style={[styles.filterButton, selectedFilter === 'crops' && styles.filterButtonActive]}
-            onPress={() => setSelectedFilter('crops')}>
-            <Leaf size={16} color={selectedFilter === 'crops' ? '#fff' : Colors.text.primary} style={styles.filterIcon} />
-            <Text style={[styles.filterText, selectedFilter === 'crops' && styles.filterTextActive]}>
+            style={[
+              styles.filterButton,
+              selectedFilter === 'crops' && styles.filterButtonActive,
+            ]}
+            onPress={() => setSelectedFilter('crops')}
+          >
+            <Leaf
+              size={16}
+              color={selectedFilter === 'crops' ? '#fff' : Colors.text.primary}
+              style={styles.filterIcon}
+            />
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === 'crops' && styles.filterTextActive,
+              ]}
+            >
               {t('crops')}
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
-            style={[styles.filterButton, selectedFilter === 'fertilizers' && styles.filterButtonActive]}
-            onPress={() => setSelectedFilter('fertilizers')}>
-            <FilterX size={16} color={selectedFilter === 'fertilizers' ? '#fff' : Colors.text.primary} style={styles.filterIcon} />
-            <Text style={[styles.filterText, selectedFilter === 'fertilizers' && styles.filterTextActive]}>
+            style={[
+              styles.filterButton,
+              selectedFilter === 'fertilizers' && styles.filterButtonActive,
+            ]}
+            onPress={() => setSelectedFilter('fertilizers')}
+          >
+            <FilterX
+              size={16}
+              color={
+                selectedFilter === 'fertilizers' ? '#fff' : Colors.text.primary
+              }
+              style={styles.filterIcon}
+            />
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === 'fertilizers' && styles.filterTextActive,
+              ]}
+            >
               {t('fertilizers')}
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
-            style={[styles.filterButton, selectedFilter === 'irrigation' && styles.filterButtonActive]}
-            onPress={() => setSelectedFilter('irrigation')}>
-            <Droplet size={16} color={selectedFilter === 'irrigation' ? '#fff' : Colors.text.primary} style={styles.filterIcon} />
-            <Text style={[styles.filterText, selectedFilter === 'irrigation' && styles.filterTextActive]}>
+            style={[
+              styles.filterButton,
+              selectedFilter === 'irrigation' && styles.filterButtonActive,
+            ]}
+            onPress={() => setSelectedFilter('irrigation')}
+          >
+            <Droplet
+              size={16}
+              color={
+                selectedFilter === 'irrigation' ? '#fff' : Colors.text.primary
+              }
+              style={styles.filterIcon}
+            />
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === 'irrigation' && styles.filterTextActive,
+              ]}
+            >
               {t('irrigation')}
             </Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
-        
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.loadingText}>{t('loadingRecommendations')}</Text>
+            <Text style={styles.loadingText}>
+              {t('loadingRecommendations')}
+            </Text>
           </View>
         ) : recentReadings.length === 0 ? (
           <Card style={styles.emptyCard}>
@@ -146,24 +241,27 @@ export default function RecommendationsScreen() {
             <Text style={styles.emptyText}>{t('noRecommendationsDesc')}</Text>
             <TouchableOpacity
               style={styles.scanButton}
-              onPress={() => router.push('/scan')}>
+              onPress={() => router.push('/scan')}
+            >
               <Text style={styles.scanButtonText}>{t('takeReading')}</Text>
             </TouchableOpacity>
           </Card>
         ) : (
           <>
             {mockRecommendations
-              .filter(rec => selectedFilter === 'all' || rec.category === selectedFilter)
+              .filter(
+                (rec) =>
+                  selectedFilter === 'all' || rec.category === selectedFilter
+              )
               .map((recommendation) => (
-                <RecommendationCard 
-                  key={recommendation.id} 
-                  recommendation={recommendation} 
+                <RecommendationCard
+                  key={recommendation.id}
+                  recommendation={recommendation}
                 />
-              ))
-            }
+              ))}
           </>
         )}
-        
+
         <Card style={styles.tipsCard}>
           <Text style={styles.tipsTitle}>{t('advisoryTips')}</Text>
           <Text style={styles.tipsText}>{t('advisoryTipsContent')}</Text>
@@ -172,7 +270,10 @@ export default function RecommendationsScreen() {
             <ArrowUpRight size={16} color={Colors.primary} />
           </TouchableOpacity>
         </Card>
-        
+
+        <ScrollView style={{ padding: 16 }}>
+          <Markdown>{recommendations}</Markdown>
+        </ScrollView>
       </ScrollView>
     </View>
   );
